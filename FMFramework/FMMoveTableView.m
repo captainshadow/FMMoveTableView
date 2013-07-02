@@ -76,6 +76,8 @@
 @property (nonatomic, assign) NSInteger autoscrollDistance;
 @property (nonatomic, assign) NSInteger autoscrollThreshold;
 
+@property (nonatomic, strong) NSArray *initialIndexPathsForSelectedRows;
+
 @end
 
 
@@ -290,7 +292,9 @@
 
 			[self setInitialIndexPathForMovingRow:touchedIndexPath];
 			[self setMovingIndexPath:touchedIndexPath];
-
+			
+			// Save selection state.
+			[self setInitialIndexPathsForSelectedRows:[self indexPathsForSelectedRows]];
 			
 			// Get the touched cell and reset it's selection state
 			FMMoveTableViewCell *touchedCell = (FMMoveTableViewCell *)[self cellForRowAtIndexPath:touchedIndexPath];
@@ -389,11 +393,25 @@
 									 
 									 // Reload row at moving index path to reset it's content
 									 NSIndexPath *movingIndexPath = [[self movingIndexPath] copy];
+									 NSIndexPath *initialIndexPathForMovingRow = [[self initialIndexPathForMovingRow] copy];
 									 [self setMovingIndexPath:nil];
 									 [self setInitialIndexPathForMovingRow:nil];
 									 [self reloadRowsAtIndexPaths:[NSArray arrayWithObject:movingIndexPath] withRowAnimation:UITableViewRowAnimationNone];
+                                     
+									 // Restore selection state
+									 for (NSIndexPath *oldIndexPath in [self initialIndexPathsForSelectedRows]) {
+										 if (oldIndexPath.section == initialIndexPathForMovingRow.section && oldIndexPath.row > initialIndexPathForMovingRow.row) {
+											 NSIndexPath *indexPath = [NSIndexPath indexPathForRow:oldIndexPath.row - 1 inSection:oldIndexPath.section];
+											 [self selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+										 } else if (oldIndexPath.section == movingIndexPath.section && oldIndexPath.row >= movingIndexPath.row) {
+											 NSIndexPath *indexPath = [NSIndexPath indexPathForRow:oldIndexPath.row + 1 inSection:oldIndexPath.section];
+											 [self selectRowAtIndexPath:indexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+										 } else if ([oldIndexPath isEqual:initialIndexPathForMovingRow]) {
+											 [self selectRowAtIndexPath:movingIndexPath animated:NO scrollPosition:UITableViewScrollPositionNone];
+										 }
+									 }
+									 [self setInitialIndexPathsForSelectedRows:nil];
 								 }
-								 
 							 }];			
 			
 			break;
@@ -412,6 +430,7 @@
 				NSIndexPath *movingIndexPath = [self movingIndexPath];
 				[self setMovingIndexPath:nil];
 				[self setInitialIndexPathForMovingRow:nil];
+				[self setInitialIndexPathsForSelectedRows:nil];
 				[self reloadRowsAtIndexPaths:[NSArray arrayWithObject:movingIndexPath] withRowAnimation:UITableViewRowAnimationNone];
 			}
 			
